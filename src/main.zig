@@ -1,8 +1,9 @@
 const std = @import("std");
 
 const crypto = @import("crypto.zig");
-const utils = @import("utils.zig");
 const HermaError = @import("error.zig").HermaError;
+const utils = @import("utils.zig");
+const vault = @import("vault.zig");
 
 const APP_NAME = "herma";
 const FILE_EXTENSION = "herma";
@@ -78,18 +79,35 @@ fn lock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, output
 
     std.debug.print("Password entered: {s}\n", .{password});
 
-    const salt = crypto.generateRandomBytes(io, crypto.SALT_SIZE);
-    const secret_key = try crypto.deriveKey(io, password, salt);
+    const salt = crypto.generate_random_bytes(io, crypto.SALT_SIZE);
+    const secret_key = try crypto.derive_key(io, password, salt);
+    defer std.crypto.secureZero(u8, @constCast(&secret_key));
 
     std.debug.print("Secret key generated: {x}\n", .{secret_key});
 
-    defer std.crypto.secureZero(u8, @constCast(&secret_key));
+    const header = vault.Header{
+        .salt = crypto.generate_random_bytes(io, crypto.SALT_SIZE),
+        .nonce = crypto.generate_random_bytes(io, crypto.NONCE_SIZE),
+    };
+
+    var file = try vault.init_vault_file(io, output_path, header);
+    defer file.close(io);
 
     std.debug.print("Successfully locked '{s}' to '{s}'\n", .{ input_path, output_path });
 }
 
 fn unlock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, output_path: []const u8) !void {
     std.debug.print("Unlocking '{s}' to '{s}'...\n", .{ input_path, output_path });
+
+    var vault_data = vault.open_vault_file(io, input_path) catch |err| {
+        switch (err) {
+            HermaError.InvalidFormat => std.log.err("Error reading input file: Invalid format.", .{}),
+            HermaError.UnsupportedVersion => std.log.err("Error reading input file: Unsupported version.", .{}),
+            else => {},
+        }
+        return err;
+    };
+    defer vault_data.file.close(io);
 
     var password_entered = false;
     var password: []u8 = undefined;
@@ -111,5 +129,9 @@ fn unlock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, outp
     }
 
     std.debug.print("Password entered: {s}\n", .{password});
+
+    const secret_key = try crypto.derive_key(io, password, vault_data.header.salt);
+    defer std.crypto.secureZero(u8, @constCast(&secret_key));
+
     std.debug.print("Successfully unlocked '{s}' to '{s}'\n", .{ input_path, output_path });
 }

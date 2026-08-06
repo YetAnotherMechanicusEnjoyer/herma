@@ -9,4 +9,9 @@ const InputError = error{
     EmptyInput,
 };
 
-pub const HermaError = ProcessError || StringError || InputError;
+const VaultError = error{
+    InvalidFormat,
+    UnsupportedVersion,
+};
+
+pub const HermaError = ProcessError || StringError || InputError || VaultError;
