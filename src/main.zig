@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const crypto = @import("crypto.zig");
 const utils = @import("utils.zig");
 const HermaError = @import("error.zig").HermaError;
 
@@ -76,6 +77,14 @@ fn lock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, output
     }
 
     std.debug.print("Password entered: {s}\n", .{password});
+
+    const salt = crypto.generateRandomBytes(io, crypto.SALT_SIZE);
+    const secret_key = try crypto.deriveKey(io, password, salt);
+
+    std.debug.print("Secret key generated: {x}\n", .{secret_key});
+
+    defer std.crypto.secureZero(u8, @constCast(&secret_key));
+
     std.debug.print("Successfully locked '{s}' to '{s}'\n", .{ input_path, output_path });
 }
 
