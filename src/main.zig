@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const archive = @import("archive.zig");
 const crypto = @import("crypto.zig");
 const HermaError = @import("error.zig").HermaError;
 const utils = @import("utils.zig");
@@ -16,7 +17,7 @@ pub fn main(init: std.process.Init) !void {
 
     parse_arguments(init.io, allocator, args) catch |err| switch (err) {
         HermaError.BadUsage => print_usage(),
-        else => {},
+        else => std.log.err("Exited with error: {any}.", .{err}),
     };
 }
 
@@ -77,21 +78,18 @@ fn lock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, output
         password_entered = true;
     }
 
-    std.debug.print("Password entered: {s}\n", .{password});
-
-    const salt = crypto.generate_random_bytes(io, crypto.SALT_SIZE);
-    const secret_key = try crypto.derive_key(io, password, salt);
-    defer std.crypto.secureZero(u8, @constCast(&secret_key));
-
-    std.debug.print("Secret key generated: {x}\n", .{secret_key});
-
     const header = vault.Header{
         .salt = crypto.generate_random_bytes(io, crypto.SALT_SIZE),
         .nonce = crypto.generate_random_bytes(io, crypto.NONCE_SIZE),
     };
 
+    const secret_key = try crypto.derive_key(io, password, header.salt);
+    defer std.crypto.secureZero(u8, @constCast(&secret_key));
+
     var file = try vault.init_vault_file(io, output_path, header);
     defer file.close(io);
+
+    try archive.pack_and_lock(io, input_path, file, secret_key, header.nonce);
 
     std.debug.print("Successfully locked '{s}' to '{s}'\n", .{ input_path, output_path });
 }
@@ -108,6 +106,8 @@ fn unlock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, outp
         return err;
     };
     defer vault_data.file.close(io);
+
+    const output_file = try std.Io.Dir.cwd().createFile(io, output_path, .{});
 
     var password_entered = false;
     var password: []u8 = undefined;
@@ -128,10 +128,10 @@ fn unlock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, outp
         password_entered = true;
     }
 
-    std.debug.print("Password entered: {s}\n", .{password});
-
     const secret_key = try crypto.derive_key(io, password, vault_data.header.salt);
     defer std.crypto.secureZero(u8, @constCast(&secret_key));
+
+    try archive.unpack_and_unlock(io, vault_data.file, output_file, secret_key, vault_data.header.nonce);
 
     std.debug.print("Successfully unlocked '{s}' to '{s}'\n", .{ input_path, output_path });
 }

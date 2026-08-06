@@ -14,4 +14,13 @@ const VaultError = error{
     UnsupportedVersion,
 };
 
-pub const HermaError = ProcessError || StringError || InputError || VaultError;
+const FileError = error{
+    UnexpectedEndOfFile,
+    CorruptedFile,
+};
+
+const CryptError = error{
+    DecryptionFailed,
+};
+
+pub const HermaError = ProcessError || StringError || InputError || VaultError || FileError || CryptError;
