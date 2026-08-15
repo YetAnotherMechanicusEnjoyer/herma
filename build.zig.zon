@@ -4,8 +4,8 @@
     .version = "0.1.0",
     .dependencies = .{
         .string = .{
-            .url = "git+https://github.com/YetAnotherMechanicusEnjoyer/libstring#4012091c2cd8f8123bac7ba3875172b125ea77c4",
-            .hash = "string-0.0.1-PoOZypmxAADDJ7hTGy2h-AcAHZ2frGXJT2zzVAT9ipno",
+            .url = "git+https://github.com/YetAnotherMechanicusEnjoyer/libstring#bbfa07aeac8af6b9a59685d819ceda2f67a1a694",
+            .hash = "string-0.0.1-PoOZyi67AAC_6tCF0Su5Bh9Yg8zAe4v7F5Py5WfAx20P",
         },
     },
     .paths = .{
