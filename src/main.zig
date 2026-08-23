@@ -67,7 +67,7 @@ fn lock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, output
     };
 
     while (!password_entered) {
-        password = utils.get_line(io, allocator, "Enter your password: ") catch |err| switch (err) {
+        password = utils.get_secret_line(io, allocator, "Enter your password: ") catch |err| switch (err) {
             HermaError.EmptyInput => {
                 std.log.err("Error reading input: Input cannot be empty.", .{});
                 continue;
@@ -117,7 +117,7 @@ fn unlock(io: std.Io, allocator: std.mem.Allocator, input_path: []const u8, outp
     };
 
     while (!password_entered) {
-        password = utils.get_line(io, allocator, "Enter your password: ") catch |err| switch (err) {
+        password = utils.get_secret_line(io, allocator, "Enter your password: ") catch |err| switch (err) {
             HermaError.EmptyInput => {
                 std.log.err("Error reading input: Input cannot be empty.", .{});
                 continue;
